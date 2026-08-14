@@ -8,7 +8,7 @@ const DEMO_STOCKS = [
   { symbol: 'HDFC', quantity: 15, avgPrice: 1680 },
 ];
 
-export default function HeroSection({ onLoadDemo }) {
+export default function HeroSection({ onLoadDemo, onOpenQuiz }) {
   const navigate = useNavigate();
   const scrollTo = (id) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
@@ -80,6 +80,14 @@ export default function HeroSection({ onLoadDemo }) {
           >
             <Play size={16} style={{ fill: 'white' }} />
             View Demo
+          </button>
+          <button
+            id="risk-quiz-btn"
+            className="btn-ghost"
+            style={{ fontSize: '0.9rem', padding: '0.875rem 1.5rem', color: 'rgba(255,255,255,0.85)', border: '1.5px solid rgba(255,255,255,0.35)', borderRadius: 'var(--radius)' }}
+            onClick={onOpenQuiz}
+          >
+            🎯 My Risk Profile
           </button>
         </div>
 

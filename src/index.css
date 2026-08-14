@@ -31,6 +31,92 @@
   --radius-xl: 1rem;
 }
 
+/* ─── Dark Mode Variables ──────────────────────────────────────────────────── */
+[data-theme="dark"] {
+  --slate-50: #0f172a;
+  --slate-100: #1e293b;
+  --slate-200: #334155;
+  --slate-300: #475569;
+  --slate-400: #64748b;
+  --slate-500: #94a3b8;
+  --slate-600: #cbd5e1;
+  --slate-700: #e2e8f0;
+  --slate-800: #f1f5f9;
+  --slate-900: #f8fafc;
+  --white: #1e293b;
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.4), 0 1px 2px -1px rgb(0 0 0 / 0.3);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.3);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.3);
+}
+
+[data-theme="dark"] body {
+  background-color: #0f172a;
+  color: #e2e8f0;
+}
+
+[data-theme="dark"] .card {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+[data-theme="dark"] .card-header {
+  background: #1e293b;
+  border-bottom-color: #334155;
+}
+
+[data-theme="dark"] .navbar {
+  background: rgba(15,23,42,0.95);
+  border-bottom-color: rgba(51,65,85,0.8);
+}
+
+[data-theme="dark"] .input-field {
+  background: #1e293b;
+  border-color: #334155;
+  color: #e2e8f0;
+}
+
+[data-theme="dark"] .input-field::placeholder {
+  color: #64748b;
+}
+
+[data-theme="dark"] .portfolio-item {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+[data-theme="dark"] .stock-card {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+[data-theme="dark"] .stock-card:hover {
+  background: #263348;
+}
+
+[data-theme="dark"] .dashboard-section {
+  background: #0f172a;
+}
+
+[data-theme="dark"] .stat-card {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+[data-theme="dark"] .modal {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+[data-theme="dark"] .chat-window {
+  background: #0f172a;
+}
+
+[data-theme="dark"] .insight-card {
+  background: #1e293b;
+  border-color: #334155;
+}
+
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -1030,3 +1116,18 @@ body {
   color: rgba(255, 255, 255, 0.5);
 }
 
+/* ─── Price Chart Container ─────────────────────────────────────────────────── */
+.price-chart-container {
+  padding: 0.25rem 0;
+}
+
+/* ─── Drawer overlay fade ──────────────────────────────────────────────────── */
+@keyframes drawerSlideIn {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+
+/* ─── Fixed Navbar layout spacer ─── */
+.page-content {
+  padding-top: 72px;
+}

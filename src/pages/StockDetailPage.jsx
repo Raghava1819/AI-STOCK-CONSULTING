@@ -1,354 +1,601 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft, ExternalLink, Star, Download, TrendingUp, TrendingDown,
-  BarChart2, FileText, Users, PieChart, ChevronRight, CheckCircle, XCircle, BookOpen
+  BarChart2, FileText, Users, PieChart, ChevronRight, CheckCircle, XCircle,
+  BookOpen, Bell, Sliders, Edit3, Target, Compass, Sparkles, Building, Info, Eye, Search, Newspaper, Clock, DollarSign, ShoppingCart, CreditCard, Truck, RefreshCw
 } from 'lucide-react';
-import { STOCKS } from '../data/stockData';
+import { STOCKS, STOCK_LIST, getStocksForSector } from '../data/stockData';
+import PriceChart from '../components/PriceChart';
+import { PriceAlertSetter } from '../components/PriceAlerts';
+import { WatchButton } from '../components/Watchlist';
 
-const TABS = ['Overview', 'Quarters', 'Analysis', 'Shareholding', 'Peers', 'Documents'];
+const TABS = [
+  { id: 'chart', label: '📈 Chart' },
+  { id: 'analysis', label: '🤖 AI Analysis' },
+  { id: 'peers', label: '🤝 Peers' },
+  { id: 'quarters', label: '📊 Quarters' },
+  { id: 'pnl', label: '📑 Profit & Loss' },
+  { id: 'balance-sheet', label: '🏛️ Balance Sheet' },
+  { id: 'cash-flow', label: '💵 Cash Flow' },
+  { id: 'ratios', label: '⚡ Ratios' },
+  { id: 'investors', label: '👥 Investors' },
+  { id: 'documents', label: '📂 Documents' }
+];
 
-function MetricBox({ label, value }) {
+function AIInsightBox({ title, text, tags = [] }) {
   return (
     <div style={{
-      padding: '1rem', background: 'var(--slate-50)', border: '1px solid var(--slate-200)',
-      borderRadius: 'var(--radius)', transition: 'all 0.2s'
-    }}
-      onMouseEnter={e => { e.currentTarget.style.background = 'white'; e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; }}
-      onMouseLeave={e => { e.currentTarget.style.background = 'var(--slate-50)'; e.currentTarget.style.boxShadow = 'none'; }}
-    >
-      <div style={{ fontSize: '0.75rem', color: 'var(--slate-500)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.375rem' }}>
-        {label}
-      </div>
-      <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--slate-900)' }}>{value}</div>
-    </div>
-  );
-}
-
-function RecommendationBadge({ rec, large }) {
-  const colors = {
-    'BUY': { bg: '#f0fdf4', color: '#16a34a', border: '#bbf7d0' },
-    'STRONG BUY': { bg: '#dcfce7', color: '#15803d', border: '#86efac' },
-    'HOLD': { bg: '#fffbeb', color: '#b45309', border: '#fde68a' },
-    'SELL': { bg: '#fef2f2', color: '#dc2626', border: '#fecaca' },
-  };
-  const c = colors[rec] || colors['HOLD'];
-  return (
-    <span style={{
-      display: 'inline-block', padding: large ? '0.375rem 1rem' : '0.15rem 0.6rem',
-      borderRadius: 9999, fontSize: large ? '0.9375rem' : '0.75rem',
-      fontWeight: 700, background: c.bg, color: c.color,
-      border: `1px solid ${c.border}`, letterSpacing: '0.05em'
+      background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
+      border: '1px solid #bae6fd', borderRadius: '0.75rem',
+      padding: '1.25rem 1.5rem', margin: '1.5rem 0', color: '#0369a1',
+      boxShadow: '0 4px 12px rgba(0,0,0,0.03)', position: 'relative', overflow: 'hidden'
     }}>
-      {rec}
-    </span>
-  );
-}
-
-// ─── Tab: Overview ────────────────────────────────────────────────────────────
-function OverviewTab({ stock }) {
-  return (
-    <div>
-      <div style={{ marginBottom: '2rem' }}>
-        <h3 style={{ fontWeight: 700, color: 'var(--slate-900)', marginBottom: '0.75rem', fontSize: '1.0625rem' }}>About {stock.name}</h3>
-        <p style={{ color: 'var(--slate-600)', lineHeight: 1.7, fontSize: '0.9375rem' }}>{stock.about}</p>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.625rem' }}>
+        <div style={{ background: '#0284c7', padding: '0.35rem', borderRadius: 6, display: 'flex' }}>
+          <Sparkles size={16} color="#ffffff" />
+        </div>
+        <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0369a1', margin: 0, letterSpacing: '0.02em' }}>
+          AI INSIGHT · {title}
+        </h4>
       </div>
 
-      <div style={{ marginBottom: '2rem' }}>
-        <h3 style={{ fontWeight: 700, color: 'var(--slate-900)', marginBottom: '0.75rem', fontSize: '1.0625rem' }}>Key Points</h3>
-        <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
-          {stock.keyPoints.map((point, i) => (
-            <li key={i} style={{ display: 'flex', gap: '0.625rem', alignItems: 'flex-start' }}>
-              <CheckCircle size={16} color="#16a34a" style={{ marginTop: '0.1rem', flexShrink: 0 }} />
-              <span style={{ color: 'var(--slate-700)', fontSize: '0.9375rem' }}>{point}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-        <div>
-          <h3 style={{ fontWeight: 700, color: '#16a34a', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1rem' }}>
-            <CheckCircle size={17} /> Pros
-          </h3>
-          <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            {stock.pros.map((p, i) => (
-              <li key={i} style={{
-                padding: '0.625rem 0.875rem', background: '#f0fdf4', border: '1px solid #bbf7d0',
-                borderRadius: 'var(--radius)', fontSize: '0.875rem', color: '#15803d'
-              }}>
-                {p}
-              </li>
-            ))}
-          </ul>
-        </div>
-        <div>
-          <h3 style={{ fontWeight: 700, color: '#dc2626', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1rem' }}>
-            <XCircle size={17} /> Cons
-          </h3>
-          <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            {stock.cons.map((c, i) => (
-              <li key={i} style={{
-                padding: '0.625rem 0.875rem', background: '#fef2f2', border: '1px solid #fecaca',
-                borderRadius: 'var(--radius)', fontSize: '0.875rem', color: '#dc2626'
-              }}>
-                {c}
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Tab: Quarters ────────────────────────────────────────────────────────────
-function QuartersTab({ stock }) {
-  return (
-    <div style={{ overflowX: 'auto' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-        <thead>
-          <tr style={{ background: 'var(--slate-50)', borderBottom: '2px solid var(--slate-200)' }}>
-            {['Quarter', 'Net Sales (₹ Cr)', 'Expenses (₹ Cr)', 'Op. Profit (₹ Cr)', 'Op. Margin %'].map(h => (
-              <th key={h} style={{ padding: '0.875rem 1rem', textAlign: h === 'Quarter' ? 'left' : 'right', fontWeight: 700, color: 'var(--slate-700)', fontSize: '0.8125rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                {h}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {stock.quarterly.map((q, i) => {
-            const margin = ((q.opProfit / q.sales) * 100).toFixed(1);
-            return (
-              <tr key={i} style={{ borderBottom: '1px solid var(--slate-100)', transition: 'background 0.15s' }}
-                onMouseEnter={e => e.currentTarget.style.background = '#f8fafc'}
-                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-              >
-                <td style={{ padding: '0.875rem 1rem', fontWeight: 600, color: 'var(--slate-900)' }}>{q.period}</td>
-                <td style={{ padding: '0.875rem 1rem', textAlign: 'right', color: 'var(--slate-700)' }}>{q.sales.toLocaleString('en-IN')}</td>
-                <td style={{ padding: '0.875rem 1rem', textAlign: 'right', color: 'var(--slate-700)' }}>{q.expenses.toLocaleString('en-IN')}</td>
-                <td style={{ padding: '0.875rem 1rem', textAlign: 'right', fontWeight: 700, color: 'var(--primary-dark)' }}>{q.opProfit.toLocaleString('en-IN')}</td>
-                <td style={{ padding: '0.875rem 1rem', textAlign: 'right' }}>
-                  <span style={{
-                    display: 'inline-block', padding: '0.2rem 0.6rem', borderRadius: 9999,
-                    fontSize: '0.8125rem', fontWeight: 700,
-                    background: Number(margin) > 20 ? '#f0fdf4' : '#fffbeb',
-                    color: Number(margin) > 20 ? '#16a34a' : '#b45309'
-                  }}>
-                    {margin}%
-                  </span>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-// ─── Tab: Analysis ────────────────────────────────────────────────────────────
-function AnalysisTab({ stock }) {
-  const colors = { BUY: '#16a34a', 'STRONG BUY': '#15803d', HOLD: '#b45309', SELL: '#dc2626' };
-  return (
-    <div>
-      <div style={{
-        padding: '1.5rem', background: 'linear-gradient(135deg, #f0f9ff, #e0f2fe)',
-        borderRadius: 'var(--radius-lg)', border: '1px solid #bae6fd', marginBottom: '2rem'
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
-          <div>
-            <div style={{ fontSize: '0.8125rem', color: 'var(--slate-500)', fontWeight: 600, marginBottom: '0.375rem' }}>AI RECOMMENDATION</div>
-            <RecommendationBadge rec={stock.recommendation} large />
-            <div style={{ marginTop: '0.75rem', fontSize: '0.9rem', color: 'var(--slate-600)' }}>
-              12-month target price: <strong style={{ color: 'var(--primary-dark)', fontSize: '1.0625rem' }}>₹{stock.targetPrice.toLocaleString('en-IN')}</strong>
-              <span style={{ marginLeft: '0.5rem', color: 'var(--teal-dark)', fontWeight: 600 }}>
-                (+{(((stock.targetPrice - stock.price) / stock.price) * 100).toFixed(1)}% upside)
-              </span>
-            </div>
-          </div>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '0.8125rem', color: 'var(--slate-500)', fontWeight: 600, marginBottom: '0.375rem' }}>OVERALL RATING</div>
-            <div style={{ fontSize: '2.5rem', fontWeight: 900, color: colors[stock.recommendation] || '#b45309' }}>{stock.rating}</div>
-            <div style={{ fontSize: '0.8rem', color: 'var(--slate-400)' }}>out of 10</div>
-          </div>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '0.8125rem', color: 'var(--slate-500)', fontWeight: 600, marginBottom: '0.375rem' }}>AI CONFIDENCE</div>
-            <div style={{ fontSize: '2.5rem', fontWeight: 900, color: 'var(--primary-dark)' }}>{stock.confidence}%</div>
-            <div style={{ width: '100%', height: 6, background: 'var(--slate-200)', borderRadius: 9999, marginTop: '0.375rem', overflow: 'hidden' }}>
-              <div style={{ height: '100%', width: `${stock.confidence}%`, background: 'linear-gradient(90deg, var(--primary), var(--teal))', borderRadius: 9999 }} />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-        <div>
-          <h3 style={{ fontWeight: 700, color: '#16a34a', marginBottom: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <CheckCircle size={17} /> Strengths
-          </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            {stock.pros.map((p, i) => (
-              <div key={i} style={{
-                display: 'flex', gap: '0.5rem', alignItems: 'flex-start',
-                padding: '0.625rem', background: '#f0fdf4', borderRadius: 'var(--radius)', border: '1px solid #dcfce7'
-              }}>
-                <CheckCircle size={15} color="#16a34a" style={{ marginTop: '0.1rem', flexShrink: 0 }} />
-                <span style={{ fontSize: '0.875rem', color: '#15803d' }}>{p}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div>
-          <h3 style={{ fontWeight: 700, color: '#dc2626', marginBottom: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <XCircle size={17} /> Concerns
-          </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            {stock.cons.map((c, i) => (
-              <div key={i} style={{
-                display: 'flex', gap: '0.5rem', alignItems: 'flex-start',
-                padding: '0.625rem', background: '#fef2f2', borderRadius: 'var(--radius)', border: '1px solid #fee2e2'
-              }}>
-                <XCircle size={15} color="#dc2626" style={{ marginTop: '0.1rem', flexShrink: 0 }} />
-                <span style={{ fontSize: '0.875rem', color: '#dc2626' }}>{c}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Tab: Shareholding ────────────────────────────────────────────────────────
-function ShareholdingTab({ stock }) {
-  return (
-    <div style={{ overflowX: 'auto' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-        <thead>
-          <tr style={{ background: 'var(--slate-50)', borderBottom: '2px solid var(--slate-200)' }}>
-            {['Quarter', 'Promoter %', 'FII %', 'DII %', 'Public %'].map(h => (
-              <th key={h} style={{ padding: '0.875rem 1rem', textAlign: h === 'Quarter' ? 'left' : 'right', fontWeight: 700, color: 'var(--slate-700)', fontSize: '0.8125rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                {h}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {stock.shareholding.map((row, i) => (
-            <tr key={i} style={{ borderBottom: '1px solid var(--slate-100)', transition: 'background 0.15s' }}
-              onMouseEnter={e => e.currentTarget.style.background = '#f8fafc'}
-              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-            >
-              <td style={{ padding: '0.875rem 1rem', fontWeight: 600, color: 'var(--slate-900)' }}>{row.period}</td>
-              {[
-                { val: row.promoter, color: '#2563eb' },
-                { val: row.fii, color: '#0d9488' },
-                { val: row.dii, color: '#f59e0b' },
-                { val: row.public, color: '#8b5cf6' },
-              ].map(({ val, color }, idx) => (
-                <td key={idx} style={{ padding: '0.875rem 1rem', textAlign: 'right' }}>
-                  <span style={{ fontWeight: 700, color }}>{val.toFixed(1)}%</span>
-                  <div style={{ height: 4, background: 'var(--slate-100)', borderRadius: 9999, marginTop: '0.25rem', overflow: 'hidden', width: '100%' }}>
-                    <div style={{ height: '100%', width: `${val}%`, background: color, borderRadius: 9999, opacity: 0.4 }} />
-                  </div>
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-// ─── Tab: Peers ───────────────────────────────────────────────────────────────
-function PeersTab({ stock }) {
-  return (
-    <div style={{ overflowX: 'auto' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-        <thead>
-          <tr style={{ background: 'var(--slate-50)', borderBottom: '2px solid var(--slate-200)' }}>
-            {['Company', 'Price', 'Mkt Cap (₹ Cr)', 'P/E', 'ROE %', 'Debt/Equity'].map(h => (
-              <th key={h} style={{ padding: '0.875rem 1rem', textAlign: h === 'Company' ? 'left' : 'right', fontWeight: 700, color: 'var(--slate-700)', fontSize: '0.8125rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                {h}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {stock.peers.map((peer, i) => (
-            <tr key={i}
-              style={{
-                borderBottom: '1px solid var(--slate-100)', transition: 'background 0.15s',
-                background: peer.symbol === stock.symbol ? '#eff6ff' : 'transparent'
-              }}
-              onMouseEnter={e => { if (peer.symbol !== stock.symbol) e.currentTarget.style.background = '#f8fafc'; }}
-              onMouseLeave={e => { if (peer.symbol !== stock.symbol) e.currentTarget.style.background = 'transparent'; }}
-            >
-              <td style={{ padding: '0.875rem 1rem' }}>
-                <Link to={`/stock/${peer.symbol}`} style={{ textDecoration: 'none' }}>
-                  <div style={{ fontWeight: 700, color: peer.symbol === stock.symbol ? 'var(--primary-dark)' : 'var(--slate-900)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    {peer.symbol === stock.symbol && <span style={{ fontSize: '0.7rem', background: 'var(--primary-dark)', color: 'white', padding: '0.1rem 0.4rem', borderRadius: 4 }}>Current</span>}
-                    {peer.name}
-                  </div>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--slate-400)' }}>{peer.symbol}</div>
-                </Link>
-              </td>
-              <td style={{ padding: '0.875rem 1rem', textAlign: 'right', fontWeight: 700, color: 'var(--slate-900)' }}>₹{peer.price.toLocaleString('en-IN')}</td>
-              <td style={{ padding: '0.875rem 1rem', textAlign: 'right', color: 'var(--slate-700)' }}>{peer.marketCap}</td>
-              <td style={{ padding: '0.875rem 1rem', textAlign: 'right', color: 'var(--slate-700)' }}>{peer.pe}x</td>
-              <td style={{ padding: '0.875rem 1rem', textAlign: 'right', fontWeight: 600, color: peer.roe > 20 ? '#16a34a' : 'var(--slate-700)' }}>{peer.roe}%</td>
-              <td style={{ padding: '0.875rem 1rem', textAlign: 'right', color: peer.debtEquity > 0.5 ? '#dc2626' : 'var(--slate-700)' }}>{peer.debtEquity}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-// ─── Tab: Documents ───────────────────────────────────────────────────────────
-function DocumentsTab({ stock }) {
-  const [downloaded, setDownloaded] = useState(null);
-  return (
-    <div>
-      <p style={{ fontSize: '0.9rem', color: 'var(--slate-500)', marginBottom: '1.5rem' }}>
-        Official filings and reports for {stock.name}
+      <p style={{ fontSize: '0.875rem', color: '#0c4a6e', lineHeight: 1.6, margin: 0, fontWeight: 500 }}>
+        {text}
       </p>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
-        {stock.documents.map((doc, i) => (
-          <div key={i} style={{
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            padding: '1rem 1.25rem', background: 'var(--slate-50)', border: '1px solid var(--slate-200)',
-            borderRadius: 'var(--radius)', transition: 'all 0.2s'
-          }}
-            onMouseEnter={e => { e.currentTarget.style.background = '#eff6ff'; e.currentTarget.style.borderColor = 'var(--primary-light)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'var(--slate-50)'; e.currentTarget.style.borderColor = 'var(--slate-200)'; }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <div style={{ width: 38, height: 38, borderRadius: 8, background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <FileText size={18} color="#dc2626" />
-              </div>
-              <div>
-                <div style={{ fontWeight: 600, color: 'var(--slate-900)', fontSize: '0.9375rem' }}>{doc.title}</div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--slate-400)', marginTop: '0.125rem' }}>{doc.type} · {doc.date}</div>
-              </div>
+
+      {tags.length > 0 && (
+        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.875rem', flexWrap: 'wrap' }}>
+          {tags.map((t, i) => (
+            <span key={i} style={{
+              fontSize: '0.75rem', fontWeight: 700, padding: '0.2rem 0.6rem', borderRadius: 9999,
+              background: '#e0f2fe', color: '#0369a1', border: '1px solid #7dd3fc'
+            }}>
+              #{t}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Company Overview Section (In Front of Key Metrics) ───────────────────────
+function CompanyOverviewCard({ stock }) {
+  const newsList = [
+    { title: `${stock.name} reports Q1 Revenue growth of +${stock.salesGrowth || 12}%, margins expand by 150 bps`, time: '2 hours ago', tag: '🟢 Bullish', source: 'NSE Disclosures' },
+    { title: `Board approves dividend distribution and strategic Capex plan for FY26`, time: '1 day ago', tag: '🟢 Bullish', source: 'BSE Filings' },
+    { title: `FII & DII institutional holdings increase by +1.4% in latest quarterly report`, time: '3 days ago', tag: '🔵 Neutral', source: 'Market Pulse' }
+  ];
+
+  return (
+    <div style={{
+      background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '1rem',
+      padding: '1.75rem', marginBottom: '2rem', boxShadow: '0 4px 20px rgba(0,0,0,0.03)'
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '0.75rem' }}>
+        <Building size={20} color="#2563eb" />
+        <h3 style={{ fontSize: '1.25rem', fontWeight: 900, color: '#0f172a', margin: 0 }}>
+          Company Overview & Strategic Profile
+        </h3>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+        {/* Left Column: About & Present Goal */}
+        <div>
+          <div style={{ marginBottom: '1.5rem' }}>
+            <h4 style={{ fontSize: '0.8rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              <Info size={14} color="#2563eb" /> ABOUT THE COMPANY
+            </h4>
+            <p style={{ fontSize: '0.875rem', color: '#334155', lineHeight: 1.6, margin: 0 }}>
+              {stock.about || `${stock.name} is a premier industry leader in the ${stock.sector} sector with market-leading market capitalization of ₹${stock.marketCap}. The company maintains strong distribution networks and durable brand equity.`}
+            </p>
+          </div>
+
+          <div>
+            <h4 style={{ fontSize: '0.8rem', fontWeight: 800, color: '#0284c7', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              <Target size={14} color="#0284c7" /> PRESENT GOAL
+            </h4>
+            <p style={{ fontSize: '0.875rem', color: '#334155', lineHeight: 1.6, margin: 0 }}>
+              Achieve sustainable double-digit revenue growth while expanding operating profit margins (OPM) above 20% and maintaining ROCE of {stock.roce}%.
+            </p>
+          </div>
+        </div>
+
+        {/* Right Column: Future Vision & Mission + Latest News */}
+        <div style={{ borderLeft: '1px solid #f1f5f9', paddingLeft: '1.75rem' }}>
+          <div style={{ marginBottom: '1.5rem' }}>
+            <h4 style={{ fontSize: '0.8rem', fontWeight: 800, color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              <Compass size={14} color="#9333ea" /> FUTURE VISION AND MISSION
+            </h4>
+            <p style={{ fontSize: '0.875rem', color: '#334155', lineHeight: 1.6, margin: 0 }}>
+              Pioneer next-generation innovations, scale international market presence, and deliver superior shareholder returns with zero solvency risk.
+            </p>
+          </div>
+
+          <div>
+            <h4 style={{ fontSize: '0.8rem', fontWeight: 800, color: '#16a34a', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              <Newspaper size={14} color="#16a34a" /> LATEST NEWS OF THE COMPANY
+            </h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+              {newsList.map((item, idx) => (
+                <div key={idx} style={{ padding: '0.65rem 0.85rem', background: '#f8fafc', borderRadius: '0.5rem', border: '1px solid #e2e8f0' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                    <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '0.1rem 0.4rem', borderRadius: 4, background: item.tag.includes('Bullish') ? '#dcfce7' : '#e0f2fe', color: item.tag.includes('Bullish') ? '#15803d' : '#0369a1' }}>
+                      {item.tag}
+                    </span>
+                    <span style={{ fontSize: '0.725rem', color: '#94a3b8' }}>{item.time}</span>
+                  </div>
+                  <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#0f172a', lineHeight: 1.4 }}>
+                    {item.title}
+                  </div>
+                </div>
+              ))}
             </div>
-            <button
-              onClick={() => { setDownloaded(i); setTimeout(() => setDownloaded(null), 2000); }}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '0.375rem',
-                padding: '0.5rem 1rem', borderRadius: 'var(--radius)',
-                background: downloaded === i ? '#f0fdf4' : 'white',
-                border: `1px solid ${downloaded === i ? '#bbf7d0' : 'var(--slate-200)'}`,
-                color: downloaded === i ? '#16a34a' : 'var(--slate-600)',
-                cursor: 'pointer', fontSize: '0.875rem', fontWeight: 600, fontFamily: 'inherit',
-                transition: 'all 0.2s'
-              }}
-            >
-              {downloaded === i ? <><CheckCircle size={15} /> Downloaded!</> : <><Download size={15} /> Download</>}
-            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+import ManageColumnsModal, { DEFAULT_COLUMNS } from '../components/ManageColumnsModal';
+
+// ─── Key Metrics Grid Section (Editable Quick Ratios) ──────────────────────────
+function KeyMetricsGrid({ stock }) {
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [activeColumns, setActiveColumns] = useState(() => {
+    try {
+      const saved = localStorage.getItem('stockai_key_metrics');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      // fallback
+    }
+    return [
+      { key: 'marketCap', label: 'MARKET CAP' },
+      { key: 'pe', label: 'P/E RATIO' },
+      { key: 'bookValue', label: 'BOOK VALUE' },
+      { key: 'dividendYield', label: 'DIVIDEND YIELD' },
+      { key: 'roce', label: 'ROCE' },
+      { key: 'roe', label: 'ROE' },
+      { key: 'faceValue', label: 'FACE VALUE' },
+      { key: 'pat', label: 'PAT' },
+      { key: 'high52', label: '52W HIGH' },
+      { key: 'low52', label: '52W LOW' },
+      { key: 'epsGrowth', label: 'EPS GROWTH' },
+      { key: 'debtEquity', label: 'DEBT/EQUITY' },
+      { key: 'promoterHolding', label: 'PROMOTER %' },
+      { key: 'fiiHolding', label: 'FII %' },
+      { key: 'diiHolding', label: 'DII %' },
+      { key: 'pegRatio', label: 'PEG RATIO' },
+      { key: 'evEbitda', label: 'EV/EBITDA' },
+      { key: 'targetPrice', label: 'TARGET PRICE' },
+    ];
+  });
+
+  const resolveMetricValue = (k, unit) => {
+    switch (k) {
+      case 'price': return `₹${stock.price?.toLocaleString('en-IN') || '2,450'}`;
+      case 'marketCap': return stock.marketCap ? `₹${stock.marketCap}` : '₹16,60,000 Cr';
+      case 'pe': return `${stock.pe || '26.8'}`;
+      case 'bookValue': return stock.bookValue ? `₹${stock.bookValue}` : '₹1,124';
+      case 'dividendYield': return `${stock.dividendYield || 0.4}%`;
+      case 'roce': return `${stock.roce}%`;
+      case 'roe': return `${stock.roe}%`;
+      case 'faceValue': return `₹${stock.faceValue || 10}`;
+      case 'pat':
+      case 'pat12m': return stock.pat ? `₹${stock.pat}` : '₹67,845 Cr';
+      case 'high52': return stock.high52 ? `₹${stock.high52.toLocaleString('en-IN')}` : '₹3,028';
+      case 'low52': return stock.low52 ? `₹${stock.low52.toLocaleString('en-IN')}` : '₹2,180';
+      case 'epsGrowth':
+      case 'epsGrowth3Y': return `${stock.epsGrowth || 12.4}%`;
+      case 'debtEquity': return `${stock.debtEquity || '0.44'}`;
+      case 'promoterHolding': return `${stock.promoterHolding}%`;
+      case 'fiiHolding': return `${stock.fiiHolding || 21.4}%`;
+      case 'diiHolding': return `${stock.diiHolding || 16.8}%`;
+      case 'peg':
+      case 'pegRatio': return `${stock.peg || '1.5'}`;
+      case 'evEbitda': return `${stock.evEbitda || '14.2'}`;
+      case 'targetPrice': return stock.targetPrice ? `₹${stock.targetPrice.toLocaleString('en-IN')}` : '₹3,100';
+      case 'sales':
+      case 'salesQuarter': return stock.salesQuarter ? `₹${stock.salesQuarter}` : '₹48,500 Cr';
+      case 'salesGrowth':
+      case 'salesGrowth3Y':
+      case 'salesGrowth5Y': return `${stock.salesGrowth || 14.2}%`;
+      case 'profitGrowth':
+      case 'profitGrowth3Y':
+      case 'profitGrowth5Y': return `${stock.profitGrowth || 15.8}%`;
+      case 'opm': return `${stock.opm || 24.5}%`;
+      case 'debt': return stock.debt || '₹12,450 Cr';
+      case 'priceBook': return `${(stock.pe ? (stock.pe * 0.18).toFixed(2) : '4.6')}`;
+      case 'returnAssets': return `${stock.returnAssets || '11.8%'}`;
+      case 'earningsYield': return `${(100 / (stock.pe || 26.8)).toFixed(2)}%`;
+      case 'pledgedPct': return `${stock.pledgedPct || '0.0%'}`;
+      case 'industryPe': return `${stock.industryPe || '24.2'}`;
+      case 'quickRatio': return `${stock.quickRatio || '1.25'}`;
+      case 'assetTurnover': return `${stock.assetTurnover || '0.85'}`;
+      case 'eps': return `₹${(stock.price / (stock.pe || 26.8)).toFixed(2)}`;
+      default: {
+        if (unit === '%') return '12.5%';
+        if (unit === 'Rs.' || unit === 'Rs.Cr.') return '₹14,500';
+        return '1.8';
+      }
+    }
+  };
+
+  const handleSaveColumns = (newColumns) => {
+    setActiveColumns(newColumns);
+    try {
+      localStorage.setItem('stockai_key_metrics', JSON.stringify(newColumns));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  return (
+    <div style={{ marginBottom: '2.5rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+          <BarChart2 size={20} color="#2563eb" />
+          <h3 style={{ fontSize: '1.2rem', fontWeight: 900, color: '#0f172a', margin: 0, letterSpacing: '-0.01em' }}>Key Metrics</h3>
+          <span style={{ fontSize: '0.75rem', background: '#eff6ff', color: '#2563eb', padding: '0.2rem 0.6rem', borderRadius: 9999, fontWeight: 700, border: '1px solid #bfdbfe' }}>
+            {activeColumns.length} Ratios Selected
+          </span>
+        </div>
+
+        <button
+          onClick={() => setShowEditModal(true)}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: '0.45rem',
+            padding: '0.45rem 0.95rem', borderRadius: '0.5rem',
+            background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+            color: '#ffffff', border: 'none', fontSize: '0.8rem', fontWeight: 800,
+            cursor: 'pointer', boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)',
+            letterSpacing: '0.02em', transition: 'all 0.15s'
+          }}
+        >
+          <Sliders size={14} /> EDIT RATIOS
+        </button>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '1rem' }}>
+        {activeColumns.map((col, idx) => (
+          <div key={col.key || idx} style={{
+            background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '0.75rem',
+            padding: '1rem 1.15rem', boxShadow: '0 1px 3px rgba(0,0,0,0.03)', transition: 'all 0.15s'
+          }}>
+            <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#64748b', letterSpacing: '0.05em', marginBottom: '0.35rem', textTransform: 'uppercase' }}>
+              {col.label}
+            </div>
+            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.01em' }}>
+              {resolveMetricValue(col.key, col.unit)}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {showEditModal && (
+        <ManageColumnsModal
+          activeColumns={activeColumns}
+          onSave={handleSaveColumns}
+          onClose={() => setShowEditModal(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── Investors Section ────────────────────────────────────────────────────────
+function InvestorsTab({ stock }) {
+  const quarters = [
+    { period: 'Jun 2024', promoter: 50.3, fii: 21.4, dii: 16.8, publicShare: 11.5 },
+    { period: 'Mar 2024', promoter: 50.3, fii: 20.8, dii: 17.2, publicShare: 11.7 },
+    { period: 'Dec 2023', promoter: 50.2, fii: 20.4, dii: 17.8, publicShare: 11.6 },
+    { period: 'Sep 2023', promoter: 50.2, fii: 19.8, dii: 18.2, publicShare: 11.8 },
+    { period: 'Jun 2023', promoter: 50.2, fii: 19.2, dii: 18.8, publicShare: 11.8 },
+  ];
+
+  const renderProgressBar = (val, max, color) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', width: '100%', justifyContent: 'flex-end' }}>
+      <div style={{ width: 90, height: 6, background: '#e2e8f0', borderRadius: 9999, overflow: 'hidden' }}>
+        <div style={{ width: `${(val / max) * 100}%`, height: '100%', background: color, borderRadius: 9999 }} />
+      </div>
+      <span style={{ fontSize: '0.875rem', fontWeight: 800, color: '#0f172a', minWidth: '45px', textAlign: 'right' }}>
+        {val}%
+      </span>
+    </div>
+  );
+
+  return (
+    <div>
+      <AIInsightBox
+        title={`Institutional & Shareholding Pattern for ${stock.name}`}
+        text={`Promoters hold ${stock.promoterHolding}% with institutional investors (FIIs & DIIs) backing over 38% of total equity.`}
+        tags={['Shareholding', 'Promoters', 'FII', 'DII']}
+      />
+
+      <div style={{ background: '#ffffff', borderRadius: '1rem', border: '1px solid #e2e8f0', padding: '1.5rem', color: '#0f172a', overflowX: 'auto', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+          <div>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, color: '#0f172a' }}>Shareholding Pattern</h3>
+            <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Numbers in percentages with institutional visual indicators</span>
+          </div>
+
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button style={{ padding: '0.35rem 0.75rem', background: '#eff6ff', border: '1px solid #3b82f6', color: '#2563eb', borderRadius: 6, fontSize: '0.75rem', fontWeight: 700 }}>Quarterly</button>
+            <button style={{ padding: '0.35rem 0.75rem', background: 'transparent', border: '1px solid #cbd5e1', color: '#64748b', borderRadius: 6, fontSize: '0.75rem' }}>Yearly</button>
+          </div>
+        </div>
+
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem', whiteSpace: 'nowrap' }}>
+          <thead>
+            <tr style={{ borderBottom: '2px solid #e2e8f0', color: '#64748b' }}>
+              <th style={{ textAlign: 'left', padding: '0.875rem 1rem', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>QUARTER</th>
+              <th style={{ textAlign: 'right', padding: '0.875rem 1rem', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>PROMOTER %</th>
+              <th style={{ textAlign: 'right', padding: '0.875rem 1rem', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>FII %</th>
+              <th style={{ textAlign: 'right', padding: '0.875rem 1rem', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>DII %</th>
+              <th style={{ textAlign: 'right', padding: '0.875rem 1rem', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>PUBLIC %</th>
+            </tr>
+          </thead>
+          <tbody>
+            {quarters.map((q, idx) => (
+              <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                <td style={{ padding: '0.875rem 1rem', fontWeight: 800, color: '#0f172a' }}>{q.period}</td>
+                <td style={{ textAlign: 'right', padding: '0.875rem 1rem' }}>{renderProgressBar(q.promoter, 60, '#3b82f6')}</td>
+                <td style={{ textAlign: 'right', padding: '0.875rem 1rem' }}>{renderProgressBar(q.fii, 30, '#14b8a6')}</td>
+                <td style={{ textAlign: 'right', padding: '0.875rem 1rem' }}>{renderProgressBar(q.dii, 30, '#f59e0b')}</td>
+                <td style={{ textAlign: 'right', padding: '0.875rem 1rem' }}>{renderProgressBar(q.publicShare, 20, '#a855f7')}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function QuartersTab({ stock }) {
+  const quarters = ['Mar 2023', 'Jun 2023', 'Sep 2023', 'Dec 2023', 'Mar 2024', 'Jun 2024', 'Sep 2024', 'Dec 2024', 'Mar 2025', 'Jun 2025'];
+  const baseSales = parseFloat(stock.salesQuarter?.replace(/[^0-9.]/g, '') || 1500);
+
+  const rows = [
+    { name: 'Sales +', key: 'sales' },
+    { name: 'Expenses +', key: 'exp' },
+    { name: 'Operating Profit', key: 'op', isBold: true },
+    { name: 'OPM %', key: 'opm', suffix: '%' },
+    { name: 'Other Income +', val: 24 },
+    { name: 'Net Profit +', key: 'np', isBold: true },
+    { name: 'EPS in Rs', key: 'eps' }
+  ];
+
+  return (
+    <div>
+      <AIInsightBox title={`Quarterly Performance for ${stock.name}`} text={`Quarterly sales stand robust at ₹${stock.salesQuarter} with stable OPM.`} tags={['Quarters', 'Sales']} />
+      <div style={{ background: '#ffffff', borderRadius: '1rem', border: '1px solid #e2e8f0', padding: '1.5rem', overflowX: 'auto', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
+        <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: '0 0 1.25rem', color: '#0f172a' }}>Quarterly Results</h3>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.825rem', whiteSpace: 'nowrap' }}>
+          <thead>
+            <tr style={{ borderBottom: '2px solid #e2e8f0', color: '#64748b' }}>
+              <th style={{ textAlign: 'left', padding: '0.75rem 1rem' }}>Metric</th>
+              {quarters.map(q => <th key={q} style={{ textAlign: 'right', padding: '0.75rem 0.75rem' }}>{q}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(r => (
+              <tr key={r.name} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                <td style={{ padding: '0.75rem 1rem', fontWeight: r.isBold ? 800 : 600, color: r.isBold ? '#2563eb' : '#334155' }}>{r.name}</td>
+                {quarters.map((q, idx) => {
+                  const factor = 0.85 + (idx * 0.03);
+                  const sales = Math.round(baseSales * factor);
+                  const exp = Math.round(sales * 0.80);
+                  const op = sales - exp;
+                  const opm = Math.round((op / sales) * 100);
+                  const np = Math.round(op * 0.75);
+                  let val = r.val || (r.key === 'sales' ? sales : r.key === 'exp' ? exp : r.key === 'op' ? op : r.key === 'opm' ? opm : r.key === 'np' ? np : (np / 30).toFixed(2));
+                  return (
+                    <td key={q} style={{ textAlign: 'right', padding: '0.75rem 0.75rem', fontWeight: r.isBold ? 800 : 500, color: r.isBold ? '#2563eb' : '#0f172a' }}>
+                      {typeof val === 'number' ? val.toLocaleString('en-IN') : val}{r.suffix || ''}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function PnLTab({ stock }) {
+  const years = ['Mar 2017', 'Mar 2018', 'Mar 2019', 'Mar 2020', 'Mar 2021', 'Mar 2022', 'Mar 2023', 'Mar 2024', 'Mar 2025'];
+  return (
+    <div>
+      <AIInsightBox title={`Profit & Loss 10-Year View`} text={`Compounded sales growth averages healthy double digits over 5 years.`} tags={['PnL', 'CAGR']} />
+      <div style={{ background: '#ffffff', borderRadius: '1rem', border: '1px solid #e2e8f0', padding: '1.5rem', overflowX: 'auto', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
+        <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: '0 0 1.25rem', color: '#0f172a' }}>Profit & Loss</h3>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.825rem', whiteSpace: 'nowrap' }}>
+          <thead>
+            <tr style={{ borderBottom: '2px solid #e2e8f0', color: '#64748b' }}>
+              <th style={{ textAlign: 'left', padding: '0.75rem 1rem' }}>Metric</th>
+              {years.map(y => <th key={y} style={{ textAlign: 'right', padding: '0.75rem 0.75rem' }}>{y}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {['Sales +', 'Expenses +', 'Operating Profit', 'Net Profit +'].map((rowName, rIdx) => (
+              <tr key={rowName} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                <td style={{ padding: '0.75rem 1rem', fontWeight: rIdx === 2 || rIdx === 3 ? 800 : 600, color: rIdx === 3 ? '#2563eb' : '#334155' }}>{rowName}</td>
+                {years.map((y, idx) => (
+                  <td key={y} style={{ textAlign: 'right', padding: '0.75rem 0.75rem', fontWeight: 600, color: '#0f172a' }}>
+                    {Math.round(4000 * (0.6 + idx * 0.08) * (rIdx === 0 ? 1 : rIdx === 1 ? 0.8 : rIdx === 2 ? 0.2 : 0.15)).toLocaleString('en-IN')}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function BalanceSheetTab({ stock }) {
+  const years = ['Mar 2017', 'Mar 2018', 'Mar 2019', 'Mar 2020', 'Mar 2021', 'Mar 2022', 'Mar 2023', 'Mar 2024', 'Mar 2025'];
+  return (
+    <div>
+      <AIInsightBox title={`Balance Sheet Health`} text={`Robust capital reserves and low debt profile maintain financial safety.`} tags={['BalanceSheet']} />
+      <div style={{ background: '#ffffff', borderRadius: '1rem', border: '1px solid #e2e8f0', padding: '1.5rem', overflowX: 'auto', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
+        <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: '0 0 1.25rem', color: '#0f172a' }}>Balance Sheet</h3>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.825rem', whiteSpace: 'nowrap' }}>
+          <thead>
+            <tr style={{ borderBottom: '2px solid #e2e8f0', color: '#64748b' }}>
+              <th style={{ textAlign: 'left', padding: '0.75rem 1rem' }}>Metric</th>
+              {years.map(y => <th key={y} style={{ textAlign: 'right', padding: '0.75rem 0.75rem' }}>{y}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {['Share Capital', 'Reserves', 'Borrowings', 'Total Liabilities'].map((rowName, rIdx) => (
+              <tr key={rowName} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                <td style={{ padding: '0.75rem 1rem', fontWeight: rIdx === 3 ? 800 : 600, color: rIdx === 3 ? '#2563eb' : '#334155' }}>{rowName}</td>
+                {years.map((y, idx) => (
+                  <td key={y} style={{ textAlign: 'right', padding: '0.75rem 0.75rem', fontWeight: 600, color: '#0f172a' }}>
+                    {Math.round(2000 * (0.8 + idx * 0.05) * (rIdx === 0 ? 0.1 : rIdx === 1 ? 0.6 : rIdx === 2 ? 0.2 : 0.9)).toLocaleString('en-IN')}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function CashFlowTab({ stock }) {
+  const years = ['Mar 2017', 'Mar 2018', 'Mar 2019', 'Mar 2020', 'Mar 2021', 'Mar 2022', 'Mar 2023', 'Mar 2024', 'Mar 2025'];
+  return (
+    <div>
+      <AIInsightBox title={`Cash Flow Trajectory`} text={`Consistently positive operating cash flows support expansion plans.`} tags={['CashFlow']} />
+      <div style={{ background: '#ffffff', borderRadius: '1rem', border: '1px solid #e2e8f0', padding: '1.5rem', overflowX: 'auto', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
+        <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: '0 0 1.25rem', color: '#0f172a' }}>Cash Flows</h3>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.825rem', whiteSpace: 'nowrap' }}>
+          <thead>
+            <tr style={{ borderBottom: '2px solid #e2e8f0', color: '#64748b' }}>
+              <th style={{ textAlign: 'left', padding: '0.75rem 1rem' }}>Metric</th>
+              {years.map(y => <th key={y} style={{ textAlign: 'right', padding: '0.75rem 0.75rem' }}>{y}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {['Cash from Operating Activity', 'Cash from Investing Activity', 'Cash from Financing Activity', 'Net Cash Flow'].map((rowName, rIdx) => (
+              <tr key={rowName} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                <td style={{ padding: '0.75rem 1rem', fontWeight: rIdx === 0 ? 800 : 600, color: rIdx === 0 ? '#16a34a' : '#334155' }}>{rowName}</td>
+                {years.map((y, idx) => (
+                  <td key={y} style={{ textAlign: 'right', padding: '0.75rem 0.75rem', fontWeight: 600, color: '#0f172a' }}>
+                    {(rIdx === 0 ? 1500 + idx * 120 : rIdx === 1 ? -800 - idx * 50 : rIdx === 2 ? -500 - idx * 40 : 200).toLocaleString('en-IN')}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function RatiosTab({ stock }) {
+  const years = ['Mar 2017', 'Mar 2018', 'Mar 2019', 'Mar 2020', 'Mar 2021', 'Mar 2022', 'Mar 2023', 'Mar 2024', 'Mar 2025'];
+  return (
+    <div>
+      <AIInsightBox title={`Financial Ratios`} text={`ROCE of ${stock.roce}% and ROE of ${stock.roe}% demonstrate high efficiency.`} tags={['Ratios']} />
+      <div style={{ background: '#ffffff', borderRadius: '1rem', border: '1px solid #e2e8f0', padding: '1.5rem', overflowX: 'auto', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
+        <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: '0 0 1.25rem', color: '#0f172a' }}>Financial Ratios</h3>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.825rem', whiteSpace: 'nowrap' }}>
+          <thead>
+            <tr style={{ borderBottom: '2px solid #e2e8f0', color: '#64748b' }}>
+              <th style={{ textAlign: 'left', padding: '0.75rem 1rem' }}>Ratio</th>
+              {years.map(y => <th key={y} style={{ textAlign: 'right', padding: '0.75rem 0.75rem' }}>{y}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {[['Debtor Days', 18], ['Inventory Days', 45], ['Days Payable', 62], ['ROCE %', `${stock.roce}%`], ['ROE %', `${stock.roe}%`]].map(([rName, rVal]) => (
+              <tr key={rName} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                <td style={{ padding: '0.75rem 1rem', fontWeight: 700, color: '#0f172a' }}>{rName}</td>
+                {years.map(y => <td key={y} style={{ textAlign: 'right', padding: '0.75rem 0.75rem', fontWeight: 600, color: '#2563eb' }}>{rVal}</td>)}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function PeersTab({ stock }) {
+  const peers = useMemo(() => getStocksForSector(stock.sector), [stock.sector]);
+  return (
+    <div>
+      <AIInsightBox title={`Sector Peer Comparison`} text={`Benchmarked against top competitors in the ${stock.sector} sector.`} tags={['Peers']} />
+      <div style={{ background: '#ffffff', borderRadius: '1rem', border: '1px solid #e2e8f0', padding: '1.5rem', overflowX: 'auto', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
+        <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: '0 0 1.25rem', color: '#0f172a' }}>Peer Comparison</h3>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.825rem', whiteSpace: 'nowrap' }}>
+          <thead>
+            <tr style={{ borderBottom: '2px solid #e2e8f0', color: '#64748b' }}>
+              <th style={{ textAlign: 'left', padding: '0.75rem 1rem' }}>Name</th>
+              <th style={{ textAlign: 'right', padding: '0.75rem 0.75rem' }}>CMP Rs.</th>
+              <th style={{ textAlign: 'right', padding: '0.75rem 0.75rem' }}>P/E</th>
+              <th style={{ textAlign: 'right', padding: '0.75rem 0.75rem' }}>Mar Cap Rs.Cr.</th>
+              <th style={{ textAlign: 'right', padding: '0.75rem 0.75rem' }}>ROCE %</th>
+              <th style={{ textAlign: 'right', padding: '0.75rem 0.75rem' }}>ROE %</th>
+            </tr>
+          </thead>
+          <tbody>
+            {peers.map(p => (
+              <tr key={p.symbol} style={{ borderBottom: '1px solid #f1f5f9', background: p.symbol === stock.symbol ? '#f0f9ff' : 'transparent' }}>
+                <td style={{ padding: '0.75rem 1rem', fontWeight: 800 }}>
+                  <Link to={`/stock/${p.symbol}`} style={{ color: '#2563eb', textDecoration: 'none' }}>{p.name}</Link>
+                </td>
+                <td style={{ textAlign: 'right', padding: '0.75rem 0.75rem', fontWeight: 700 }}>₹{p.price.toLocaleString('en-IN')}</td>
+                <td style={{ textAlign: 'right', padding: '0.75rem 0.75rem' }}>{p.pe}</td>
+                <td style={{ textAlign: 'right', padding: '0.75rem 0.75rem' }}>{p.marketCap}</td>
+                <td style={{ textAlign: 'right', padding: '0.75rem 0.75rem' }}>{p.roce}%</td>
+                <td style={{ textAlign: 'right', padding: '0.75rem 0.75rem' }}>{p.roe}%</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function AnalysisTab({ stock }) {
+  return (
+    <div>
+      <AIInsightBox title={`AI Valuation & Risk Rating for ${stock.symbol}`} text={`Overall AI score: ${stock.rating || 8.5}/10. 12-month target price: ₹${stock.targetPrice || (stock.price * 1.18).toFixed(0)}.`} tags={['AIAnalysis']} />
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+        <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '0.75rem', padding: '1.25rem' }}>
+          <h4 style={{ color: '#16a34a', fontWeight: 800, margin: '0 0 0.5rem' }}>✓ Key Strengths</h4>
+          <p style={{ fontSize: '0.875rem', color: '#15803d', margin: 0 }}>Market leader in {stock.sector} with high ROCE ({stock.roce}%).</p>
+        </div>
+        <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '0.75rem', padding: '1.25rem' }}>
+          <h4 style={{ color: '#dc2626', fontWeight: 800, margin: '0 0 0.5rem' }}>✕ Monitorables</h4>
+          <p style={{ fontSize: '0.875rem', color: '#991b1b', margin: 0 }}>Watch for input cost pressure and general market volatility.</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DocumentsTab({ stock }) {
+  return (
+    <div>
+      <AIInsightBox title={`Document Filings`} text={`Audited reports and quarterly investor presentations.`} tags={['Filings']} />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+        {[`${stock.name} Annual Report FY25.pdf`, `${stock.name} Investor Presentation.pdf`].map((doc, idx) => (
+          <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '0.5rem' }}>
+            <span style={{ fontWeight: 700, color: '#0f172a' }}>{doc}</span>
+            <button style={{ padding: '0.35rem 0.75rem', background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}>Download</button>
           </div>
         ))}
       </div>
@@ -356,116 +603,98 @@ function DocumentsTab({ stock }) {
   );
 }
 
-// ─── Main Stock Detail Page ────────────────────────────────────────────────────
-export default function StockDetailPage() {
+// ─── Main Stock Detail Page Component ────────────────────────────────────────
+export default function StockDetailPage({ isWatched, toggleWatch, alerts, addAlert, removeAlert }) {
   const { symbol } = useParams();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('Overview');
-  const [followed, setFollowed] = useState(false);
+
+  const [activeTab, setActiveTab] = useState('chart');
   const [exported, setExported] = useState(false);
 
-  const stock = STOCKS[symbol?.toUpperCase()];
+  const stockSymbolToUse = useMemo(() => symbol ? symbol.toUpperCase() : 'TCS', [symbol]);
 
-  if (!stock) {
-    return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '1rem' }}>
-        <div style={{ fontSize: '4rem' }}>🔍</div>
-        <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--slate-900)' }}>Stock not found</h2>
-        <p style={{ color: 'var(--slate-500)' }}>"{symbol}" is not in our database yet.</p>
-        <button className="btn-primary" onClick={() => navigate('/demo')}>
-          <ArrowLeft size={16} /> Back to Dashboard
-        </button>
-      </div>
-    );
-  }
+  const stock = useMemo(() => {
+    if (STOCKS[stockSymbolToUse]) return STOCKS[stockSymbolToUse];
+    const found = STOCK_LIST.find(s => s.symbol.toUpperCase() === stockSymbolToUse);
+    return found || STOCKS['TCS'];
+  }, [stockSymbolToUse]);
 
   const isUp = stock.change >= 0;
 
+  const handleTabClick = (tabId) => {
+    setActiveTab(tabId);
+    document.getElementById('stock-detail-tabs-container')?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const bseCode = stock.bseCode || '500325';
+  const nseCode = stock.nseCode || stock.symbol;
+
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--slate-50)' }}>
-      {/* Header */}
+    <div style={{ minHeight: '100vh', background: '#f8fafc' }}>
+      {/* Sleek Header Banner */}
       <div style={{
-        background: 'linear-gradient(135deg, #1e3a8a 0%, #1e40af 40%, #0369a1 80%, #0f766e 100%)',
+        background: 'linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #0284c7 100%)',
         padding: '1.5rem 2rem 2rem', color: 'white'
       }}>
         <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-          {/* Back button */}
           <button
             onClick={() => navigate('/demo')}
             style={{
               display: 'inline-flex', alignItems: 'center', gap: '0.375rem', marginBottom: '1.25rem',
               background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)',
-              color: 'white', borderRadius: 8, padding: '0.5rem 1rem', cursor: 'pointer',
-              fontSize: '0.875rem', fontWeight: 500, fontFamily: 'inherit', transition: 'all 0.2s'
+              color: 'white', borderRadius: 8, padding: '0.45rem 0.85rem', cursor: 'pointer',
+              fontSize: '0.85rem', fontWeight: 600
             }}
-            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.25)'}
-            onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'}
           >
             <ArrowLeft size={16} /> Back to Demo
           </button>
 
-          {/* Company info row */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1.5rem' }}>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.375rem', flexWrap: 'wrap' }}>
-                <h1 style={{ fontSize: '1.75rem', fontWeight: 900, letterSpacing: '-0.02em' }}>{stock.name}</h1>
+                <h1 style={{ fontSize: '1.85rem', fontWeight: 900, margin: 0, letterSpacing: '-0.02em' }}>{stock.name} Ltd</h1>
                 <span style={{
-                  padding: '0.2rem 0.75rem', borderRadius: 9999,
-                  background: 'rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.9)',
-                  fontSize: '0.8125rem', border: '1px solid rgba(255,255,255,0.3)'
+                  padding: '0.25rem 0.75rem', borderRadius: 9999,
+                  background: 'rgba(255,255,255,0.15)', color: 'white',
+                  fontSize: '0.8rem', border: '1px solid rgba(255,255,255,0.3)', fontWeight: 600
                 }}>
                   {stock.sector}
                 </span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem', fontSize: '0.875rem', color: 'rgba(255,255,255,0.75)', flexWrap: 'wrap' }}>
-                <a href={`https://${stock.website}`} target="_blank" rel="noopener noreferrer"
-                  style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: 'rgba(255,255,255,0.75)', textDecoration: 'none' }}>
-                  <ExternalLink size={13} /> {stock.website}
-                </a>
-                <span>BSE: {stock.bseCode}</span>
-                <span>NSE: {stock.nseCode}</span>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '0.85rem', flexWrap: 'wrap', marginTop: '0.4rem' }}>
+                <span style={{ color: '#7dd3fc', fontWeight: 600 }}>🌐 {stock.symbol.toLowerCase()}.co.in</span>
+                <span style={{ color: 'white', background: 'rgba(255,255,255,0.15)', padding: '0.15rem 0.5rem', borderRadius: 4 }}>BSE: {bseCode}</span>
+                <span style={{ color: 'white', background: 'rgba(255,255,255,0.15)', padding: '0.15rem 0.5rem', borderRadius: 4 }}>NSE: {nseCode}</span>
               </div>
             </div>
 
-            {/* Action buttons */}
-            <div style={{ display: 'flex', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
               <button
                 onClick={() => { setExported(true); setTimeout(() => setExported(false), 2000); }}
                 style={{
                   display: 'flex', alignItems: 'center', gap: '0.375rem',
-                  padding: '0.625rem 1.25rem', borderRadius: 'var(--radius)',
-                  background: exported ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.15)',
-                  border: '1px solid rgba(255,255,255,0.4)',
-                  color: exported ? 'var(--primary-dark)' : 'white',
-                  cursor: 'pointer', fontSize: '0.875rem', fontWeight: 600, fontFamily: 'inherit', transition: 'all 0.2s'
+                  padding: '0.55rem 1.15rem', borderRadius: 8,
+                  background: exported ? 'white' : 'rgba(255,255,255,0.15)',
+                  border: '1px solid rgba(255,255,255,0.3)',
+                  color: exported ? '#1e3a8a' : 'white',
+                  cursor: 'pointer', fontSize: '0.85rem', fontWeight: 700
                 }}
               >
-                <Download size={15} />
-                {exported ? 'Exported!' : 'Export to Excel'}
+                <Download size={15} /> {exported ? 'Exported!' : 'Export to Excel'}
               </button>
-              <button
-                onClick={() => setFollowed(f => !f)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: '0.375rem',
-                  padding: '0.625rem 1.25rem', borderRadius: 'var(--radius)',
-                  background: followed ? 'rgba(255,215,0,0.25)' : 'rgba(255,255,255,0.15)',
-                  border: `1px solid ${followed ? 'rgba(255,215,0,0.6)' : 'rgba(255,255,255,0.4)'}`,
-                  color: followed ? '#fcd34d' : 'white',
-                  cursor: 'pointer', fontSize: '0.875rem', fontWeight: 600, fontFamily: 'inherit', transition: 'all 0.2s'
-                }}
-              >
-                <Star size={15} style={{ fill: followed ? '#fcd34d' : 'transparent' }} />
-                {followed ? 'Following' : 'Follow'}
-              </button>
+
+              {toggleWatch && stock && (
+                <WatchButton stock={stock} isWatched={isWatched?.(stock.symbol)} onToggle={toggleWatch} size="md" />
+              )}
             </div>
           </div>
 
-          {/* Price row */}
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '1rem', marginTop: '1.25rem' }}>
-            <div style={{ fontSize: '2.75rem', fontWeight: 900, letterSpacing: '-0.03em' }}>
+            <div style={{ fontSize: '2.85rem', fontWeight: 900, letterSpacing: '-0.03em' }}>
               ₹{stock.price.toLocaleString('en-IN')}
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', fontSize: '1.0625rem', fontWeight: 700, color: isUp ? '#4ade80' : '#f87171' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', fontSize: '1.1rem', fontWeight: 800, color: isUp ? '#4ade80' : '#f87171' }}>
               {isUp ? <TrendingUp size={20} /> : <TrendingDown size={20} />}
               {isUp ? '+' : ''}{stock.change} ({isUp ? '+' : ''}{stock.changePercent.toFixed(2)}%)
             </div>
@@ -473,66 +702,58 @@ export default function StockDetailPage() {
         </div>
       </div>
 
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '2rem' }}>
-        {/* Key Metrics Grid */}
-        <div style={{ marginBottom: '2rem' }}>
-          <h2 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--slate-700)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <BarChart2 size={18} /> Key Metrics
-          </h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '0.75rem' }}>
-            <MetricBox label="Market Cap" value={`₹${stock.marketCap}`} />
-            <MetricBox label="P/E Ratio" value={stock.pe} />
-            <MetricBox label="Book Value" value={`₹${stock.bookValue}`} />
-            <MetricBox label="Dividend Yield" value={`${stock.dividendYield}%`} />
-            <MetricBox label="ROCE" value={`${stock.roce}%`} />
-            <MetricBox label="ROE" value={`${stock.roe}%`} />
-            <MetricBox label="Face Value" value={`₹${stock.faceValue}`} />
-            <MetricBox label="PAT" value={`₹${stock.pat}`} />
-            <MetricBox label="52W High" value={`₹${stock.high52.toLocaleString('en-IN')}`} />
-            <MetricBox label="52W Low" value={`₹${stock.low52.toLocaleString('en-IN')}`} />
-            <MetricBox label="EPS Growth" value={`${stock.epsGrowth}%`} />
-            <MetricBox label="Debt/Equity" value={stock.debtEquity} />
-            <MetricBox label="Promoter %" value={`${stock.promoterHolding}%`} />
-            <MetricBox label="FII %" value={`${stock.fiiHolding}%`} />
-            <MetricBox label="DII %" value={`${stock.diiHolding}%`} />
-            <MetricBox label="PEG Ratio" value={stock.peg} />
-            <MetricBox label="EV/EBITDA" value={stock.evEbitda} />
-            <MetricBox label="Target Price" value={`₹${stock.targetPrice.toLocaleString('en-IN')}`} />
-          </div>
+      {/* Main Container */}
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '2rem 1.5rem' }}>
+        
+        {/* Company Overview Section (In Front of Key Metrics) */}
+        <CompanyOverviewCard stock={stock} />
+
+        {/* Key Metrics Grid (User Screenshot 2 Format) */}
+        <KeyMetricsGrid stock={stock} />
+
+        {/* 10 Screener Navigation Tabs Bar */}
+        <div id="stock-detail-tabs-container" style={{
+          background: '#ffffff', borderBottom: '2px solid #e2e8f0', borderRadius: '0.75rem 0.75rem 0 0',
+          display: 'flex', gap: '0.5rem', padding: '0 1rem', overflowX: 'auto', position: 'sticky', top: 0, zIndex: 90,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
+        }}>
+          {TABS.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => handleTabClick(tab.id)}
+              style={{
+                padding: '0.875rem 1.15rem', background: 'none', border: 'none',
+                borderBottom: activeTab === tab.id ? '3px solid #2563eb' : '3px solid transparent',
+                color: activeTab === tab.id ? '#2563eb' : '#64748b',
+                fontWeight: activeTab === tab.id ? 800 : 600, fontSize: '0.875rem', cursor: 'pointer',
+                whiteSpace: 'nowrap', transition: 'all 0.15s'
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
-        {/* Tabs */}
-        <div className="card">
-          {/* Tab Buttons */}
-          <div style={{ display: 'flex', borderBottom: '2px solid var(--slate-100)', overflowX: 'auto' }}>
-            {TABS.map(tab => (
-              <button
-                key={tab}
-                id={`tab-${tab.toLowerCase()}`}
-                onClick={() => setActiveTab(tab)}
-                style={{
-                  padding: '0.875rem 1.25rem', border: 'none', cursor: 'pointer',
-                  fontFamily: 'inherit', fontSize: '0.9rem', fontWeight: 600, whiteSpace: 'nowrap',
-                  background: 'transparent', transition: 'all 0.2s',
-                  color: activeTab === tab ? 'var(--primary-dark)' : 'var(--slate-500)',
-                  borderBottom: activeTab === tab ? '2px solid var(--primary-dark)' : '2px solid transparent',
-                  marginBottom: '-2px',
-                }}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
+        {/* Tab Contents */}
+        <div style={{ background: '#ffffff', borderRadius: '0 0 0.75rem 0.75rem', padding: '1.75rem', border: '1px solid #e2e8f0', borderTop: 'none' }}>
+          {activeTab === 'chart' && (
+            <div style={{ background: '#ffffff', padding: '0.5rem' }}>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a', marginBottom: '1rem' }}>
+                📈 Interactive Stock Price Chart
+              </h3>
+              <PriceChart stock={stock} />
+            </div>
+          )}
 
-          {/* Tab Content */}
-          <div style={{ padding: '1.75rem' }}>
-            {activeTab === 'Overview' && <OverviewTab stock={stock} />}
-            {activeTab === 'Quarters' && <QuartersTab stock={stock} />}
-            {activeTab === 'Analysis' && <AnalysisTab stock={stock} />}
-            {activeTab === 'Shareholding' && <ShareholdingTab stock={stock} />}
-            {activeTab === 'Peers' && <PeersTab stock={stock} />}
-            {activeTab === 'Documents' && <DocumentsTab stock={stock} />}
-          </div>
+          {activeTab === 'analysis' && <AnalysisTab stock={stock} />}
+          {activeTab === 'peers' && <PeersTab stock={stock} />}
+          {activeTab === 'quarters' && <QuartersTab stock={stock} />}
+          {activeTab === 'pnl' && <PnLTab stock={stock} />}
+          {activeTab === 'balance-sheet' && <BalanceSheetTab stock={stock} />}
+          {activeTab === 'cash-flow' && <CashFlowTab stock={stock} />}
+          {activeTab === 'ratios' && <RatiosTab stock={stock} />}
+          {activeTab === 'investors' && <InvestorsTab stock={stock} />}
+          {activeTab === 'documents' && <DocumentsTab stock={stock} />}
         </div>
       </div>
     </div>
